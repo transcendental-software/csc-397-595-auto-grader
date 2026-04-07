@@ -29,6 +29,9 @@ module alu_tb;
     );
 
     initial begin
+        $dumpfile("alu.vcd");
+        $dumpvars(0, alu_tb);
+
         // Initialize inputs to default values
         a = 8'd0;
         b = 8'd0;
