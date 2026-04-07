@@ -1,25 +1,21 @@
-# Makefile for Lab 1: 8-Bit ALU
+# General Makefile
 
 # Tools
 IV = iverilog
-VVP = vvp
 
 # Files
-RTL_SRC = rtl/alu.v
-TB_SRC = tb/alu_tb.v
+ALU_RTL_SRC = rtl/alu.v
+ALU_TB_SRC = tb/alu_tb.v
 
 # Output executable
-OUT-ALU = alu.vvp
+ALU-OUT = alu.vvp
 
-.PHONY: all compile-alu test-alu clean
+.PHONY: all compile-alu clean
 
 all: compile-alu
 
-compile-alu: $(RTL_SRC) $(TB_SRC)
-	$(IV) -o $(OUT-ALU) $(RTL_SRC) $(TB_SRC)
-
-test-alu: compile-alu
-	$(VVP) $(OUT-ALU)
+compile-alu: $(ALU_RTL_SRC) $(ALU_TB_SRC)
+	$(IV) -o $(ALU-OUT) $(ALU_RTL_SRC) $(ALU_TB_SRC)
 
 clean:
-	rm -f $(OUT-ALU) *.vcd
+	rm -f $(ALU-OUT) *.vcd
