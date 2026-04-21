@@ -70,7 +70,7 @@ class TestFW(unittest.TestCase):
             
             # Run the compilation target 
             result = subprocess.run(
-                ['make', 'compile-fw'],
+                ['make', 'compile'],
                 cwd=project_root,
                 capture_output=True,
                 text=True
