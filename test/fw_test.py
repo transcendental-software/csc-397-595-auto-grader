@@ -26,7 +26,7 @@ class TestFW(unittest.TestCase):
         
         # Ensure the simulation executable exists before running
         if not os.path.exists(vvp_file):
-            subprocess.run(['make', 'compile-fw'], cwd=project_root, capture_output=True)
+            subprocess.run(['make', 'compile'], cwd=project_root, capture_output=True)
             
         # Format packet bytes as space-separated hex strings
         input_str = " ".join(f"{b:02x}" for b in packet) + "\n"
