@@ -31,7 +31,7 @@ VHDL_EXCLUDE ?=
 VHDL_SRCS = $(filter-out $(addprefix %,$(VHDL_EXCLUDE)), $(NEORV32_SRCS))
 
 # Verilog sources
-VERILOG_IP ?= ../rtl/xbux_miner_wrapper.v ../rtl/miner.v
+VERILOG_IP ?= ../rtl/xbus_miner_wrapper.v ../rtl/miner.v
 VERILOG_TB ?= miner_tb.v
 VERILOG_SRCS = $(VERILOG_TB) $(WRAPPER).v $(VERILOG_IP)
 
