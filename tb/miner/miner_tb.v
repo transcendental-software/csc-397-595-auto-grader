@@ -26,6 +26,7 @@ module neorv32_verilog_tb;
   reg [7:0] in_buf [0:127];
   integer in_len;
   integer k;
+  integer wait_cycles;
 
   reg [583:0] match_prompt; // 73 chars * 8 bits = 584 bits
   reg prompt_detected;
@@ -85,16 +86,16 @@ module neorv32_verilog_tb;
 
   task uart_send_char;
     input [7:0] char_in;
-    integer b;
+    integer b, c_cycles;
     begin
       uart_rxd = 0; // start bit
-      #(1_000_000_000 / 19200);
+      for (c_cycles = 0; c_cycles < (100000000 / 19200); c_cycles = c_cycles + 1) @(posedge clk);
       for (b = 0; b < 8; b = b + 1) begin
         uart_rxd = char_in[b];
-        #(1_000_000_000 / 19200);
+        for (c_cycles = 0; c_cycles < (100000000 / 19200); c_cycles = c_cycles + 1) @(posedge clk);
       end
       uart_rxd = 1; // stop bit
-      #(1_000_000_000 / 19200);
+      for (c_cycles = 0; c_cycles < (100000000 / 19200); c_cycles = c_cycles + 1) @(posedge clk);
     end
   endtask
 
@@ -103,8 +104,10 @@ module neorv32_verilog_tb;
     in_len = 0;
 
     // 1. Wait until the prompt string is fully received from the UART
-    wait(prompt_detected == 1);
-    #1000000; // wait 1ms
+    while (prompt_detected == 0) begin
+      @(posedge clk);
+    end
+    for (wait_cycles = 0; wait_cycles < 100000; wait_cycles = wait_cycles + 1) @(posedge clk); // wait 1ms
 
     // 2. Read a line from STDIN
     c = $fgetc(32'h8000_0000);
@@ -113,7 +116,7 @@ module neorv32_verilog_tb;
       in_len = in_len + 1;
       c = $fgetc(32'h8000_0000);
     end
-    in_buf[in_len] = 10; // add newline
+    in_buf[in_len] = 13; // add carriage return (\r) expected by neorv32_uart0_scan
     in_len = in_len + 1;
 
     // 3. Pass the read line to the UART
