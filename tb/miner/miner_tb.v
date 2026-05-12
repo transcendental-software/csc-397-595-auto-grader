@@ -17,9 +17,19 @@ module neorv32_verilog_tb;
 
   reg clk, nrst; // generators
   wire uart_txd; // serial TX line (default baud rate is 19200)
+  reg uart_rxd;  // serial RX line
   wire [7:0] char_data; // character detected by the UART receiver
   wire char_valid; // valid character
   integer i;
+
+  integer c;
+  reg [7:0] in_buf [0:127];
+  integer in_len;
+  integer k;
+
+  reg [55:0] match_prompt;
+  reg prompt_detected;
+  reg [79:0] match_complete;
 
   // XBUS (Wishbone) signals
   wire [31:0] xbus_adr;
@@ -35,8 +45,8 @@ module neorv32_verilog_tb;
   // generator setup
   initial begin
 `ifdef DUMP_WAVE
-    $dumpfile("wave.fst"); // write waveform data
-    $dumpvars();
+    $dumpfile("wave.vcd"); // write waveform data
+    $dumpvars(neorv32_verilog_tb);
 `endif
     $display ("[TB] NEORV32 Verilog testbench\n");
     clk = 0;
@@ -50,6 +60,61 @@ module neorv32_verilog_tb;
     $finish; // terminate
   end
 
+  initial begin
+    match_prompt = 0;
+    prompt_detected = 0;
+    match_complete = 0;
+  end
+
+  always @(posedge clk) begin
+    if (char_valid) begin
+      match_prompt = {match_prompt[47:0], char_data};
+      if (match_prompt == "spaces:") begin
+        prompt_detected = 1;
+      end
+
+      match_complete = {match_complete[71:0], char_data};
+      if (match_complete == "Complete!\n") begin
+        $finish;
+      end
+    end
+  end
+
+  task uart_send_char;
+    input [7:0] char_in;
+    integer b;
+    begin
+      uart_rxd = 0; // start bit
+      #(1_000_000_000 / 19200);
+      for (b = 0; b < 8; b = b + 1) begin
+        uart_rxd = char_in[b];
+        #(1_000_000_000 / 19200);
+      end
+      uart_rxd = 1; // stop bit
+      #(1_000_000_000 / 19200);
+    end
+  endtask
+
+  initial begin
+    uart_rxd = 1;
+    in_len = 0;
+    c = $fgetc(32'h8000_0000);
+    while (c != 10 && c != 13 && c != -1 && in_len < 127) begin
+      in_buf[in_len] = c;
+      in_len = in_len + 1;
+      c = $fgetc(32'h8000_0000);
+    end
+    in_buf[in_len] = 10; // add newline
+    in_len = in_len + 1;
+
+    wait(prompt_detected == 1);
+    #1000000; // wait 1ms
+
+    for (k = 0; k < in_len; k = k + 1) begin
+      uart_send_char(in_buf[k]);
+    end
+  end
+
   // clock generator
   always begin
     #5 clk = !clk; // T = 2*5ns -> f = 100MHz
@@ -61,7 +126,7 @@ module neorv32_verilog_tb;
   neorv32_verilog_wrapper neorv32_verilog_inst (
     .clk_i       (clk),
     .rstn_i      (nrst),
-    .uart0_rxd_i (1'b0),
+    .uart0_rxd_i (uart_rxd),
     .uart0_txd_o (uart_txd),
     // XBUS (Wishbone)
     .xbus_adr_o  (xbus_adr),
@@ -75,8 +140,8 @@ module neorv32_verilog_tb;
     .xbus_err_i  (xbus_err)
   );
 
-  // Hardware Adder Accelerator Wrapper
-  xbus_adder_wrapper adder_inst (
+  // Hardware Miner Accelerator Wrapper
+  xbus_miner_wrapper miner_inst (
     .clk_i      (clk),
     .rstn_i     (nrst),
     .xbus_adr_i (xbus_adr),
