@@ -19,7 +19,7 @@ SIMULATOR ?= verilator
 BUILD ?= build
 
 # NEORV32 VHDL sources
-NEORV32_HOME ?= neorv32
+NEORV32_HOME ?= ../neorv32
 NEORV32_FFILE = $(shell cat $(NEORV32_HOME)/rtl/file_list_soc.f)
 NEORV32_SRCS = $(subst NEORV32_RTL_PATH_PLACEHOLDER, $(NEORV32_HOME)/rtl, $(NEORV32_FFILE))
 
