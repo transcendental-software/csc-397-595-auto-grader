@@ -87,7 +87,7 @@ else ifeq ($(SIMULATOR), verilator)
 	@echo "Running simulation with Verilator"
 	@mkdir -p $(BUILD)
 	@verilator $(VERILATOR_ARGS) $(VERILOG_SRCS)
-	@./$(BUILD)/Vtestbench
+	@./$(BUILD)/Vminer_tb
 else
 	$(error Unsupported SIMULATOR: $(SIMULATOR))
 endif
