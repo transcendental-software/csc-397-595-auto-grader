@@ -21,6 +21,17 @@ module neorv32_verilog_tb;
   wire char_valid; // valid character
   integer i;
 
+  // XBUS (Wishbone) signals
+  wire [31:0] xbus_adr;
+  wire [31:0] xbus_dat_o;
+  wire [31:0] xbus_dat_i;
+  wire        xbus_we;
+  wire [3:0]  xbus_sel;
+  wire        xbus_stb;
+  wire        xbus_cyc;
+  wire        xbus_ack;
+  wire        xbus_err;
+
   // generator setup
   initial begin
 `ifdef DUMP_WAVE
@@ -32,10 +43,10 @@ module neorv32_verilog_tb;
     nrst = 0;
     #100; // active reset for 100 * timescale = 100 ns
     nrst = 1;
-    for (i = 0; i < 4; i = i + 1) begin
+    for (i = 0; i < 30; i = i + 1) begin
       #1_000_000_000; // run for 1 second (10^9 ns) per iteration
     end
-    $display("\n[TB] Simulation completed after 4 seconds.");
+    $display("\n[TB] Simulation completed after 30 seconds.");
     $finish; // terminate
   end
 
@@ -51,7 +62,32 @@ module neorv32_verilog_tb;
     .clk_i       (clk),
     .rstn_i      (nrst),
     .uart0_rxd_i (1'b0),
-    .uart0_txd_o (uart_txd)
+    .uart0_txd_o (uart_txd),
+    // XBUS (Wishbone)
+    .xbus_adr_o  (xbus_adr),
+    .xbus_dat_o  (xbus_dat_o),
+    .xbus_dat_i  (xbus_dat_i),
+    .xbus_we_o   (xbus_we),
+    .xbus_sel_o  (xbus_sel),
+    .xbus_stb_o  (xbus_stb),
+    .xbus_cyc_o  (xbus_cyc),
+    .xbus_ack_i  (xbus_ack),
+    .xbus_err_i  (xbus_err)
+  );
+
+  // Hardware Adder Accelerator Wrapper
+  xbus_adder_wrapper adder_inst (
+    .clk_i      (clk),
+    .rstn_i     (nrst),
+    .xbus_adr_i (xbus_adr),
+    .xbus_dat_i (xbus_dat_o),
+    .xbus_dat_o (xbus_dat_i),
+    .xbus_we_i  (xbus_we),
+    .xbus_sel_i (xbus_sel),
+    .xbus_stb_i (xbus_stb),
+    .xbus_cyc_i (xbus_cyc),
+    .xbus_ack_o (xbus_ack),
+    .xbus_err_o (xbus_err)
   );
 
   // simulation UART receiver - outputs all received characters to the simulator console

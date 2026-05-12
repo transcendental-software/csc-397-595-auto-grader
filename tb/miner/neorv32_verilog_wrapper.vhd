@@ -21,7 +21,17 @@ entity neorv32_verilog_wrapper is
     rstn_i      : in  std_ulogic; -- global reset, low-active, async
     -- UART0 --
     uart0_txd_o : out std_ulogic; -- UART0 send data
-    uart0_rxd_i : in  std_ulogic  -- UART0 receive data
+    uart0_rxd_i : in  std_ulogic; -- UART0 receive data
+    -- XBUS (Wishbone) --
+    xbus_adr_o  : out std_ulogic_vector(31 downto 0); -- address
+    xbus_dat_o  : out std_ulogic_vector(31 downto 0); -- write data
+    xbus_dat_i  : in  std_ulogic_vector(31 downto 0); -- read data
+    xbus_we_o   : out std_ulogic;                     -- read/write
+    xbus_sel_o  : out std_ulogic_vector(3 downto 0);  -- byte enable
+    xbus_stb_o  : out std_ulogic;                     -- strobe
+    xbus_cyc_o  : out std_ulogic;                     -- valid cycle
+    xbus_ack_i  : in  std_ulogic;                     -- transfer acknowledge
+    xbus_err_i  : in  std_ulogic                      -- transfer error
   );
 end entity;
 
@@ -118,7 +128,17 @@ begin
     rstn_i      => rstn_i,      -- global reset, low-active, async
     -- primary UART0 --
     uart0_txd_o => uart0_txd_o, -- UART0 send data
-    uart0_rxd_i => uart0_rxd_i  -- UART0 receive data
+    uart0_rxd_i => uart0_rxd_i, -- UART0 receive data
+    -- XBUS (Wishbone) --
+    xbus_adr_o  => xbus_adr_o,  -- address
+    xbus_dat_o  => xbus_dat_o,  -- write data
+    xbus_dat_i  => xbus_dat_i,  -- read data
+    xbus_we_o   => xbus_we_o,   -- read/write
+    xbus_sel_o  => xbus_sel_o,  -- byte enable
+    xbus_stb_o  => xbus_stb_o,  -- strobe
+    xbus_cyc_o  => xbus_cyc_o,  -- valid cycle
+    xbus_ack_i  => xbus_ack_i,  -- transfer acknowledge
+    xbus_err_i  => xbus_err_i   -- transfer error
   );
 
 end architecture;
