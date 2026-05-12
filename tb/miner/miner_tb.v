@@ -27,9 +27,9 @@ module neorv32_verilog_tb;
   integer in_len;
   integer k;
 
-  reg [55:0] match_prompt;
+  reg [583:0] match_prompt; // 73 chars * 8 bits = 584 bits
   reg prompt_detected;
-  reg [79:0] match_complete;
+  reg [79:0] match_complete; // 10 chars * 8 bits = 80 bits
 
   // XBUS (Wishbone) signals
   wire [31:0] xbus_adr;
@@ -68,11 +68,14 @@ module neorv32_verilog_tb;
 
   always @(posedge clk) begin
     if (char_valid) begin
-      match_prompt = {match_prompt[47:0], char_data};
-      if (match_prompt == "spaces:") begin
+      // Buffer character to detect the prompt message
+      match_prompt = {match_prompt[575:0], char_data};
+      if (match_prompt == "Enter mode (sw or hw) and data (d0 d1 d2 d3 target) separated by spaces:\n") begin
         prompt_detected = 1;
       end
 
+      // Buffer character to detect the completion message
+      // Note: Printing received characters to STDOUT is handled by uart_sim_receiver
       match_complete = {match_complete[71:0], char_data};
       if (match_complete == "Complete!\n") begin
         $finish;
@@ -98,6 +101,12 @@ module neorv32_verilog_tb;
   initial begin
     uart_rxd = 1;
     in_len = 0;
+
+    // 1. Wait until the prompt string is fully received from the UART
+    wait(prompt_detected == 1);
+    #1000000; // wait 1ms
+
+    // 2. Read a line from STDIN
     c = $fgetc(32'h8000_0000);
     while (c != 10 && c != 13 && c != -1 && in_len < 127) begin
       in_buf[in_len] = c;
@@ -107,12 +116,13 @@ module neorv32_verilog_tb;
     in_buf[in_len] = 10; // add newline
     in_len = in_len + 1;
 
-    wait(prompt_detected == 1);
-    #1000000; // wait 1ms
-
+    // 3. Pass the read line to the UART
     for (k = 0; k < in_len; k = k + 1) begin
       uart_send_char(in_buf[k]);
     end
+
+    // 4. After passing the line, the testbench continues reading from UART and 
+    //    printing to STDOUT (via uart_sim_receiver) until "Complete!\n" is detected.
   end
 
   // clock generator
