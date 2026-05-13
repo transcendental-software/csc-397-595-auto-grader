@@ -31,16 +31,16 @@ VHDL_EXCLUDE ?=
 VHDL_SRCS = $(filter-out $(addprefix %,$(VHDL_EXCLUDE)), $(NEORV32_SRCS))
 
 # Verilog sources
+VERILOG_TOP_MODULE ?= miner_tb.v # Top-level Verilog module for C++ testbench
 VERILOG_IP ?= ../rtl/xbus_miner_wrapper.v ../rtl/miner.v
-VERILOG_TB ?= miner_tb.v
-VERILOG_SRCS = $(VERILOG_TB) $(WRAPPER).v $(VERILOG_IP)
+VERILOG_SRCS = $(VERILOG_TOP_MODULE) $(WRAPPER).v $(VERILOG_IP)
 
 # C++ testbench source
-CPP_TB ?= miner_tb.cpp
+CPP_TB_SRC ?= miner_tb.cpp
 
 # Simulation
 THREADS ?= 4
-VERILATOR_ARGS = -Wno-fatal --cc --exe --build --Mdir $(BUILD) --threads $(THREADS)
+VERILATOR_ARGS = -Wno-fatal --cc --exe --build --Mdir $(BUILD) --threads $(THREADS) --top-module neorv32_verilog_tb
 ICARUS_ARGS =
 
 # Dump waveform data
@@ -81,18 +81,13 @@ convert: $(WRAPPER).v prototype
 sim: $(WRAPPER).v
 	@echo "Verilog source files:"
 	@echo $(VERILOG_SRCS)
-ifeq ($(SIMULATOR), iverilog)
-	@echo "Running simulation with Icarus Verilog"
-	@mkdir -p $(BUILD)
-	@iverilog $(ICARUS_ARGS) -o $(BUILD)/neorv32-iverilog $(VERILOG_SRCS)
-	@vvp $(BUILD)/neorv32-iverilog
-else ifeq ($(SIMULATOR), verilator)
+ifeq ($(SIMULATOR), verilator)
 	@echo "Running simulation with Verilator"
 	@mkdir -p $(BUILD)
-	@verilator $(VERILATOR_ARGS) $(VERILOG_SRCS) $(CPP_TB)
+	@verilator $(VERILATOR_ARGS) $(VERILOG_SRCS) $(abspath $(CPP_TB_SRC))
 	@./$(BUILD)/Vneorv32_verilog_tb
 else
-	$(error Unsupported SIMULATOR: $(SIMULATOR))
+	$(error Unsupported SIMULATOR: '$(SIMULATOR)'. Only 'verilator' is supported for this testbench.)
 endif
 ifeq ($(DUMP_WAVE), 1)
 	@echo "Dumping waveform data to 'wave.fst'"
@@ -118,7 +113,7 @@ help:
 	@echo "  WRAPPER       VHDL conversion wrapper; default = $(WRAPPER)"
 	@echo "  VHDL_EXCLUDE  Default NEORV32 VHDL core files to exclude from conversion"
 	@echo "  VERILOG_IP    Custom Verilog IPs (for simulation)"
-	@echo "  SIMULATOR     Verilog simulator; 'iverilog' or 'verilator'; default = $(SIMULATOR)"
+	@echo "  SIMULATOR     Verilog simulator; only 'verilator' is supported; default = $(SIMULATOR)"
 	@echo "  DUMP_WAVE     Dump waveform data to 'wave.fst' when 1; default = $(DUMP_WAVE)"
 	@echo ""
 	@echo "Simple example:"
