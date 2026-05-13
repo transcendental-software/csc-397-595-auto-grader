@@ -78,6 +78,17 @@ convert: $(WRAPPER).v prototype
 # Run Verilog simulation
 # -----------------------------------------------------------------------------
 
+compile-sim: $(WRAPPER).v
+	@echo "Verilog source files:"
+	@echo $(VERILOG_SRCS)
+ifeq ($(SIMULATOR), verilator)
+	@echo "Compiling simulation with Verilator"
+	@mkdir -p $(BUILD)
+	@verilator $(VERILATOR_ARGS) $(VERILOG_SRCS) $(abspath $(CPP_TB_SRC))
+else
+	$(error Unsupported SIMULATOR: '$(SIMULATOR)'. Only 'verilator' is supported for this testbench.)
+endif
+
 sim: $(WRAPPER).v
 	@echo "Verilog source files:"
 	@echo $(VERILOG_SRCS)
@@ -104,6 +115,7 @@ help:
 	@echo "  help       Show this text"
 	@echo "  convert    Convert NEORV32 to Verilog (generate $(WRAPPER).v)"
 	@echo "  prototype  Show Verilog instantiation prototype"
+	@echo "  compile-sim Compile simulation with Verilator without running it"
 	@echo "  sim        Run simulation with Icarus-Verilog or Verilator"
 	@echo "  clean      Remove all build artifacts"
 	@echo "  all        clean + convert + sim"
