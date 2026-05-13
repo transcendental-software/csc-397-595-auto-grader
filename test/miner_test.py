@@ -58,7 +58,7 @@ class TestMiner(unittest.TestCase):
                 
             # Wait for output data to become available
             ready, _, _ = select.select([proc.stdout], [], [], 1.0)
-            if ready[0]:
+            if ready:
                 try:
                     chunk = os.read(proc.stdout.fileno(), 4096).decode('utf-8', errors='replace')
                 except OSError:
