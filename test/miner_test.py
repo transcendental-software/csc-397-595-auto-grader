@@ -81,6 +81,10 @@ class TestMiner(unittest.TestCase):
         finally:
             proc.terminate()
             proc.wait()
+            if proc.stdin:
+                proc.stdin.close()
+            if proc.stdout:
+                proc.stdout.close()
             
         return output_data
 
@@ -172,12 +176,12 @@ class TestMiner(unittest.TestCase):
                               f"Inputs: d0={d0:#010x}, d1={d1:#010x}, d2={d2:#010x}, d3={d3:#010x}, target={target:#010x}\n"
                               f"Returned Nonce: {nonce:#010x}\n"
                               f"Expected Nonce: {expected_nonce:#010x}\n"
-                              f"Returned Hash: {hash_val:#010x}\n"
+                              f"Cycles: {res['cycles']}\n"
                               f"Error: Returned Nonce does not match Expected Nonce")
                 
                 op_score += 10
                 TestMiner.score += 10
-                print(f"[PASSED] Test {idx+1} (Difficulty {idx+1}) - Hash: {hash_val:#010x} <= Target: {target:#010x} | Cycles: {res['cycles']}")
+                print(f"[PASSED] Test {idx+1} (Difficulty {idx+1}) - Inputs: d0={d0:#010x}, d1={d1:#010x}, d2={d2:#010x}, d3={d3:#010x}, target={target:#010x} | Nonce: {nonce:#010x} | Cycles: {res['cycles']}")
                 
             print(f"[OPERATION PASSED] {mode.upper()} Mining - Scored {op_score}/{total_points} points.")
         except AssertionError as e:
