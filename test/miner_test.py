@@ -46,41 +46,42 @@ class TestMiner(unittest.TestCase):
             text=False
         )
         
-        start_time = time.time()
-        timeout = 1800 # 30 minutes
-        output_data = ""
-        prompt_found = False
-        
-        while True:
-            if time.time() - start_time > timeout:
-                proc.kill()
-                self.fail("Simulation timed out after 30 minutes.")
-                
-            # Wait for output data to become available
-            ready, _, _ = select.select([proc.stdout], [], [], 1.0)
-            if ready:
-                try:
-                    chunk = os.read(proc.stdout.fileno(), 4096).decode('utf-8', errors='replace')
-                except OSError:
-                    break
+        try:
+            start_time = time.time()
+            timeout = 600 # 10 minutes
+            output_data = ""
+            prompt_found = False
+            
+            while True:
+                if time.time() - start_time > timeout:
+                    self.fail("Simulation timed out after 10 minutes.")
                     
-                if not chunk:
-                    break # Reached EOF
+                # Wait for output data to become available
+                ready, _, _ = select.select([proc.stdout], [], [], 1.0)
+                if ready:
+                    try:
+                        chunk = os.read(proc.stdout.fileno(), 4096).decode('utf-8', errors='replace')
+                    except OSError:
+                        break
+                        
+                    if not chunk:
+                        break # Reached EOF
+                        
+                    output_data += chunk
                     
-                output_data += chunk
-                
-                # Wait for the input prompt before sending data
-                if not prompt_found and "Enter mode (sw or hw) and data (d0 d1 d2 d3 target) separated by spaces:" in output_data:
-                    prompt_found = True
-                    proc.stdin.write(input_str.encode('utf-8'))
-                    proc.stdin.flush()
-                    
-                # Stop reading upon completion and terminate gracefully
-                if prompt_found and "Processing complete!" in output_data:
-                    proc.terminate()
-                    break
-                    
-        proc.wait()
+                    # Wait for the input prompt before sending data
+                    if not prompt_found and "Enter mode (sw or hw) and data (d0 d1 d2 d3 target) separated by spaces:" in output_data:
+                        prompt_found = True
+                        proc.stdin.write(input_str.encode('utf-8'))
+                        proc.stdin.flush()
+                        
+                    # Stop reading upon completion and terminate gracefully
+                    if prompt_found and "Processing complete!" in output_data:
+                        break
+        finally:
+            proc.terminate()
+            proc.wait()
+            
         return output_data
 
     def run_simulation(self, mode, d0, d1, d2, d3, target):
@@ -120,7 +121,7 @@ class TestMiner(unittest.TestCase):
             
             # Run the compilation target 
             result = subprocess.run(
-                ['make', 'compile'],
+                ['make', 'compile-sim'],
                 cwd=project_root,
                 capture_output=True,
                 text=True
@@ -158,15 +159,21 @@ class TestMiner(unittest.TestCase):
                 res = self.run_simulation(mode, d0, d1, d2, d3, target)
                 nonce = res['nonce']
                 
+                # Compute the expected nonce deterministically
+                expected_nonce = 0
+                while simple_hash(d0, d1, d2, d3, expected_nonce) > target:
+                    expected_nonce += 1
+
                 # Dynamically calculate the resulting hash using our Python model
                 hash_val = simple_hash(d0, d1, d2, d3, nonce)
                 
-                if hash_val > target:
+                if nonce != expected_nonce:
                     self.fail(f"\n[FAILED] {mode.upper()} Test {idx+1}\n"
                               f"Inputs: d0={d0:#010x}, d1={d1:#010x}, d2={d2:#010x}, d3={d3:#010x}, target={target:#010x}\n"
                               f"Returned Nonce: {nonce:#010x}\n"
-                              f"Calculated Hash: {hash_val:#010x}\n"
-                              f"Error: Hash > Target")
+                              f"Expected Nonce: {expected_nonce:#010x}\n"
+                              f"Returned Hash: {hash_val:#010x}\n"
+                              f"Error: Returned Nonce does not match Expected Nonce")
                 
                 op_score += 10
                 TestMiner.score += 10
