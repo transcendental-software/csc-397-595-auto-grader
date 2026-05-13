@@ -1,6 +1,8 @@
 import os
 import re
 import subprocess
+import time
+import select
 import sys
 import unittest
 import random
@@ -33,36 +35,79 @@ class TestMiner(unittest.TestCase):
     def tearDownClass(cls):
         print(f"\n======================================\nFINAL SCORE: {cls.score} / {cls.max_score}\n======================================")
 
+    def _interact_with_sim(self, cmd, cwd, input_str):
+        """Handles interacting with the simulation via standard I/O streams with a timeout."""
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=cwd,
+            text=False
+        )
+        
+        start_time = time.time()
+        timeout = 1800 # 30 minutes
+        output_data = ""
+        prompt_found = False
+        
+        while True:
+            if time.time() - start_time > timeout:
+                proc.kill()
+                self.fail("Simulation timed out after 30 minutes.")
+                
+            # Wait for output data to become available
+            ready, _, _ = select.select([proc.stdout], [], [], 1.0)
+            if ready[0]:
+                try:
+                    chunk = os.read(proc.stdout.fileno(), 4096).decode('utf-8', errors='replace')
+                except OSError:
+                    break
+                    
+                if not chunk:
+                    break # Reached EOF
+                    
+                output_data += chunk
+                
+                # Wait for the input prompt before sending data
+                if not prompt_found and "Enter mode (sw or hw) and data (d0 d1 d2 d3 target) separated by spaces:" in output_data:
+                    prompt_found = True
+                    proc.stdin.write(input_str.encode('utf-8'))
+                    proc.stdin.flush()
+                    
+                # Stop reading upon completion and terminate gracefully
+                if prompt_found and "Processing complete!" in output_data:
+                    proc.terminate()
+                    break
+                    
+        proc.wait()
+        return output_data
+
     def run_simulation(self, mode, d0, d1, d2, d3, target):
         """Helper method to run the make sim simulation and parse the outputs."""
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         
         # Format inputs space-separated (scanf expects hex strings without 0x prefix for %x)
         input_str = f"{mode} {d0:x} {d1:x} {d2:x} {d3:x} {target:x}\n"
-        result = subprocess.run(
-            ['make', 'sim'],
-            input=input_str,
-            cwd=project_root,
-            capture_output=True,
-            text=True
-        )
+        
+        output_data = self._interact_with_sim(['make', 'sim'], project_root, input_str)
         
         # Parse output using regex based on main.c printf statements
         mode_upper = mode.upper()
-        result_match = re.search(rf'{mode_upper} Mining Result:\s+0x([0-9a-fA-F]+)', result.stdout)
-        exec_match = re.search(r'Execution Time:\s+(\d+)\s+cycles', result.stdout)
+        result_match = re.search(rf'{mode_upper} Mining Result:\s+0x([0-9a-fA-F]+)', output_data)
+        exec_match = re.search(r'Execution Time:\s+(\d+)\s+cycles', output_data)
         
         if not result_match:
-            self.fail(f"Failed to parse simulation output for inputs: '{input_str.strip()}'\n\nSimulation Output:\n{result.stdout}")
+            self.fail(f"Failed to parse simulation output for inputs: '{input_str.strip()}'\n\nSimulation Output:\n{output_data}")
             
         return {
             'nonce': int(result_match.group(1), 16),
             'cycles': int(exec_match.group(1)) if exec_match else None,
-            'raw_stdout': result.stdout
+            'raw_stdout': output_data
         }
 
     def test_00_compilation(self):
-        """Test that the application compiles and simulates successfully."""
+        """Test that the application compiles successfully."""
         print("\n--- Testing Compilation ---")
         op_score = 0
         total_points = 0
@@ -73,19 +118,16 @@ class TestMiner(unittest.TestCase):
             # Clean any previous builds
             subprocess.run(['make', 'clean'], cwd=project_root, capture_output=True)
             
-            # Use a dummy simulation run to invoke the build dependencies
-            input_str = "sw 0 0 0 0 7fffffff\n"
+            # Run the compilation target 
             result = subprocess.run(
-                ['make', 'sim'],
-                input=input_str,
+                ['make', 'compile'],
                 cwd=project_root,
                 capture_output=True,
                 text=True
             )
             
-            # Verify the command succeeded and ran properly
-            self.assertEqual(result.returncode, 0, f"\n[FAILED] Compilation/Simulation failed:\n{result.stderr}\n{result.stdout}")
-            self.assertIn("SW Mining Result", result.stdout, "\n[FAILED] Executable did not run properly. Compilation might have failed.")
+            # Verify the command succeeded
+            self.assertEqual(result.returncode, 0, f"\n[FAILED] Compilation failed:\n{result.stderr}\n{result.stdout}")
             
             TestMiner.score += 0
             op_score += 0
