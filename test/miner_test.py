@@ -121,7 +121,7 @@ class TestMiner(unittest.TestCase):
             
             # Run the compilation target 
             result = subprocess.run(
-                ['make', 'compile-sim'],
+                ['make', 'compile'],
                 cwd=project_root,
                 capture_output=True,
                 text=True
