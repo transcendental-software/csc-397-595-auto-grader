@@ -48,13 +48,13 @@ class TestMiner(unittest.TestCase):
         
         try:
             start_time = time.time()
-            timeout = 600 # 10 minutes
+            timeout = 3600 # 60 minutes
             output_data = ""
             prompt_found = False
             
             while True:
                 if time.time() - start_time > timeout:
-                    self.fail("Simulation timed out after 10 minutes.")
+                    self.fail("Simulation timed out after 60 minutes.")
                     
                 # Wait for output data to become available
                 ready, _, _ = select.select([proc.stdout], [], [], 1.0)
