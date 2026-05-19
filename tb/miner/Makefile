@@ -39,8 +39,8 @@ VERILOG_SRCS = $(VERILOG_TOP_MODULE) $(WRAPPER).v $(VERILOG_IP)
 CPP_TB_SRC ?= miner_tb.cpp
 
 # Simulation
-THREADS ?= 4
-VERILATOR_ARGS = -Wno-fatal --cc --exe --build --Mdir $(BUILD) --threads $(THREADS) --top-module neorv32_verilog_tb
+THREADS ?= 1
+VERILATOR_ARGS = -Wno-fatal --cc --exe --build --Mdir $(BUILD) --threads $(THREADS) -O3 --x-assign fast --x-initial fast -CFLAGS "-O3 -march=native -mtune=native -flto" --top-module neorv32_verilog_tb
 ICARUS_ARGS =
 
 # Dump waveform data
