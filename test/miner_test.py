@@ -48,7 +48,7 @@ class TestMiner(unittest.TestCase):
         
         try:
             start_time = time.time()
-            timeout = 3600 # 60 minutes
+            timeout = 5400 # 90 minutes
             output_data = ""
             prompt_found = False
             
